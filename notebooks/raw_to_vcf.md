@@ -18,7 +18,8 @@ VBCF gave us the raw library in BAM format so the code fits that. --bamtags tell
 ```bash
 > deML -i P5P7_for_demulti --bamtags BC,QT,B2,Q2 -o Lib3-demulti_deML.bam -s demult_stats.txt -e demult_unassigned.txt Lib3_raw.bam
 ```
-Seperating the demultiplexed file to many BAM files & generating a report while at it. [^1] Previously used samtools for this step but no longer do due to [this behaviour of adding unassigned reads](https://github.com/samtools/samtools/issues/896) 
+Seperating the demultiplexed file to many BAM files & generating a report while at it. 
+[^1]: Previously used samtools for this step but no longer do due to [this behaviour of adding unassigned reads](https://github.com/samtools/samtools/issues/896) 
 ```bash
 while read ind; do
 	bamtools filter -tag RG:"$ind" -in "$ind"_Lib3_unfiltered.bam -out "$ind"_Lib3.bam;
