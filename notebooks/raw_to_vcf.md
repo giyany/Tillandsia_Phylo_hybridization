@@ -3,7 +3,8 @@ Updated: 9/3/2021
 
 Required: [Trimmomatic](http://www.usadellab.org/cms/?page=trimmomatic), [deML](https://github.com/grenaud/deML), [samtools](https://github.com/samtools/samtools)
 
-Description and goals
+Process raw whole-genome-sequencing data to variant call file. Quality control, pre-processing and variant calling.
+
 Overall, the data was sequenced in over 4 different lanes. Here I'm presenting an example of processing a single lane, but the same applies to all lanes.
 
 ## List of metadata files
