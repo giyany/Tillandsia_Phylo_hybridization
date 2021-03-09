@@ -8,6 +8,10 @@ Description and goals
 ## List of metadata files
 - P5P7_for_demulti - tab delimited file with accession and indices used. See description in the [deML format examples](https://github.com/grenaud/deML)
 
+## demultiplex
 
-
->get a piece of code.
+VBCF gave us 
+```bash
+> deML -i P5P7_for_demulti --bamtags BC,QT,B2,Q2 -o Lib3-demulti_deML.bam -s demult_stats.txt -e demult_unassigned.txt Lib3_raw_full.bam
+```
+ddd
