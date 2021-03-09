@@ -5,7 +5,7 @@ Required: [Trimmomatic](http://www.usadellab.org/cms/?page=trimmomatic), [deML](
 
 Description and goals
 
-##List of metadata files
+## List of metadata files
 - P5P7_for_demulti - tab delimited file with accession and indices used. See description in the [deML format examples](https://github.com/grenaud/deML)
 
 
