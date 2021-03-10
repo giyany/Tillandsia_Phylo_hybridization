@@ -25,8 +25,18 @@ while read ind; do
 	bamtools filter -tag RG:"$ind" -in "$ind"_Lib3_unfiltered.bam -out "$ind"_Lib3.bam;
 	samtools stats "$ind"_Lib3.bam > "$ind"_raw_stats.txt;
 	bedtools bamtofastq -i "$ind"_Lib3.bam -fq "$ind"_Lib3_R1.fq -fq2 "$ind"_Lib3_R2.fq;
+done < ind_list.txt
+```
+
+## trim & produce fastqc reports 
+
+compare the raw fastqc reports with the trimmed. This scrpt uses 8 cores but use whatever is available to you.
+
+```bash
+while read ind; do
+	fastqc -t 8 -f fastqc "$ind"_Lib3_R*.fq 
 	trim_galore --fastqc --cores 8 --retain_unpaired --paired "$ind"_Lib3_R1.fq "$ind"_Lib3_R2.fq;
 done < ind_list.txt
-
 ```
+
 
