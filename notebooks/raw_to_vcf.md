@@ -1,11 +1,11 @@
 # Tillandsia whole genome data: from sequencer to VCF
 Updated: 9/3/2021
 
-Required: [Trimmomatic](http://www.usadellab.org/cms/?page=trimmomatic), [deML](https://github.com/grenaud/deML), [samtools](https://github.com/samtools/samtools),[bamtools],[bedtools],[trim_galore]
+Required: [Trimmomatic](http://www.usadellab.org/cms/?page=trimmomatic), [deML](https://github.com/grenaud/deML), [samtools](https://github.com/samtools/samtools),[bamtools](https://github.com/pezmaster31/bamtools),[bedtools](https://github.com/arq5x/bedtools2),[trim_galore](https://www.bioinformatics.babraham.ac.uk/projects/trim_galore/)
 
 Process raw whole-genome-sequencing data to variant call file. Quality control, pre-processing and variant calling.
 
-Overall, the data was sequenced in over 4 different lanes. Here I'm presenting an example of processing a single lane (called it Lib3), but the same applies to all lanes. 
+Overall, the data was sequenced in over 4 different lanes. Here I'm presenting an example of processing a single lane (called Lib3) but the same applies to all lanes. 
 
 ## List of metadata files
 - P5P7_for_demulti - tab delimited file with sample name and indices used. See description in the [deML format examples](https://github.com/grenaud/deML)
