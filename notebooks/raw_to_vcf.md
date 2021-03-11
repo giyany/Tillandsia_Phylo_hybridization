@@ -39,4 +39,17 @@ while read ind; do
 done < ind_list.txt
 ```
 
+## align to reference and prepare for variant call
+
+this script was adapted to run on the University of Vienna's Cube (LISC) and will probably need to be adapted to run on other system.
+
+```bash
+#!/bin/bash
+#SBATCH --job-name=map_process
+#SBATCH --
+#
+#
+```
+
+
 
