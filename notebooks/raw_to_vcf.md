@@ -22,7 +22,7 @@ Seperating the demultiplexed file to many BAM files, converting to FASTQ & gener
 
 ```bash
 while read ind; do
-	bamtools filter -tag RG:"$ind" -in "$ind"_Lib3_unfiltered.bam -out "$ind"_Lib3.bam;
+	bamtools filter -tag RG:"$ind" -in Lib3-demulti_deML.bam -out "$ind"_Lib3.bam;
 	samtools stats "$ind"_Lib3.bam > "$ind"_raw_stats.txt;
 	bedtools bamtofastq -i "$ind"_Lib3.bam -fq "$ind"_Lib3_R1.fq -fq2 "$ind"_Lib3_R2.fq;
 done < ind_list.txt
