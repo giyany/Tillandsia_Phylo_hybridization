@@ -30,7 +30,7 @@ done < ind_list.txt
 
 ## trim & produce fastqc reports 
 _
-compare the raw fastqc reports with the trimmed. This scrpt uses 8 cores but use whatever is available to you.
+Compare the raw fastqc reports with the trimmed. This script uses 8 cores but use whatever is available to you.
 the output from trim_galore is, by default, files named "$ind"\_Lib3_R1_val_1.fq, "$ind"\_Lib3_R2_val_2.fq for paired end data.
 
 ```bash
@@ -49,7 +49,7 @@ bowtie2-build tillandsia_fasciculata_assembly.sorted.fasta Tfasc_bowtie2_index
 ```
 
 
-this script was adapted to run on as an array the Vienna Scientific Cluster (VSC) and will probably need to be adapted to run on other system.
+This script was adapted to run on as an array the Vienna Scientific Cluster (VSC) and will probably need to be adapted to run on other system.
 I love to keep the bowtie output as a log, hence the 2> redirect, which can be removed.
 
 ```bash
