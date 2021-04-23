@@ -29,8 +29,9 @@ done < ind_list.txt
 ```
 
 ## trim & produce fastqc reports 
-
+_
 compare the raw fastqc reports with the trimmed. This scrpt uses 8 cores but use whatever is available to you.
+the output from trim_galore is, by default, files named "$ind"\_Lib3_R1_val_1.fq, "$ind"\_Lib3_R2_val_2.fq for paired end data.
 
 ```bash
 while read ind; do
@@ -41,14 +42,31 @@ done < ind_list.txt
 
 ## align to reference and prepare for variant call
 
-this script was adapted to run on the University of Vienna's Cube (LISC) and will probably need to be adapted to run on other system.
+Prepare your reference by indexing with bowtie2. Ours is a *Tillandsia fasciculata* reference in fasta format:
+
+```bash
+bowtie2-build tillandsia_fasciculata_assembly.sorted.fasta Tfasc_bowtie2_index
+```
+
+
+this script was adapted to run on as an array the Vienna Scientific Cluster (VSC) and will probably need to be adapted to run on other system.
 
 ```bash
 #!/bin/bash
-#SBATCH --job-name=map_process
-#SBATCH --
 #
-#
+#SBATCH -J bowtie2
+#SBATCH -N 1
+#SBATCH --ntasks-per-node=16
+#SBATCH --ntasks-per-core=1
+#SBATCH -p mem_xxx
+#SBATCH --array=74,77-79,80-99
+
+conda activate my-env
+
+i=$SLURM_ARRAY_TASK_ID
+
+bowtie2 --very-sensitive-local -x /gpfs/data/fs71400/yardeni/Tillandsia_ref/Tfasc_bowtie2_index -1 "$i"_Lib3_R1_val_1.fq -2 "$i"B_Lib5_R2_val_2.fq -S "$i"_aligned_Tfas.sam -p 16 2> "$i"B_bowtie2.log;
+
 ```
 
 
