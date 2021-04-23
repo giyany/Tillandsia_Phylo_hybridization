@@ -50,6 +50,7 @@ bowtie2-build tillandsia_fasciculata_assembly.sorted.fasta Tfasc_bowtie2_index
 
 
 this script was adapted to run on as an array the Vienna Scientific Cluster (VSC) and will probably need to be adapted to run on other system.
+I love to keep the bowtie output as a log, hence the 2> redirect, which can be removed.
 
 ```bash
 #!/bin/bash
