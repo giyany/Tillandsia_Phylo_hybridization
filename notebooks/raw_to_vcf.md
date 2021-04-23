@@ -1,7 +1,7 @@
 # Tillandsia whole genome data: from sequencer to VCF
 Updated: 9/3/2021
 
-Required: [Trimmomatic](http://www.usadellab.org/cms/?page=trimmomatic), [deML](https://github.com/grenaud/deML), [samtools](https://github.com/samtools/samtools),[bamtools](https://github.com/pezmaster31/bamtools),[bedtools](https://github.com/arq5x/bedtools2),[trim_galore](https://www.bioinformatics.babraham.ac.uk/projects/trim_galore/)
+Required: [Trimmomatic](http://www.usadellab.org/cms/?page=trimmomatic), [deML](https://github.com/grenaud/deML), [samtools](https://github.com/samtools/samtools),[bamtools](https://github.com/pezmaster31/bamtools), [bedtools](https://github.com/arq5x/bedtools2),[trim_galore](https://www.bioinformatics.babraham.ac.uk/projects/trim_galore/), [bowtie2](http://bowtie-bio.sourceforge.net/bowtie2/index.shtml), [picard-tools](https://broadinstitute.github.io/picard/), [fastqc](https://www.bioinformatics.babraham.ac.uk/projects/fastqc/)
 
 Process raw whole-genome-sequencing data to variant call file. Quality control, pre-processing and variant calling.
 
@@ -66,8 +66,16 @@ conda activate my-env
 
 i=$SLURM_ARRAY_TASK_ID
 
+#map to reference
 bowtie2 --very-sensitive-local -x /gpfs/data/fs71400/yardeni/Tillandsia_ref/Tfasc_bowtie2_index -1 "$i"_Lib3_R1_val_1.fq -2 "$i"B_Lib5_R2_val_2.fq -S "$i"_aligned_Tfas.sam -p 16 2> "$i"B_bowtie2.log;
-
+#collect stats on alignment
+samtools stats "$ind"_aligned_Tfasc.sam > "$ind"_aligned_Tfasc_sam_stats.txt;
+#convert to bam, keep uniquely mapped reads only, filter by mq>10 & sort
+samtools view -h -b -q 10 "$ind"_aligned_Tfasc.sam | samtools sort -o "$ind"_asmq10.bam;
+#add read group info. This is specific to my data, other users would want to modify
+picard AddOrReplaceReadGroups I="$ind"_asmq10.bam o="$ind"_asmq10rg.bam RGLB=WGD RGPL=illumina RGPU=Lib3 RGSM="$ind" RGID="$ind";
+#mark duplicates. notice duplicates here are MARKED NOT REMOVED
+picard MarkDuplicates I="$ind"_asmq10rg.bam o="$ind"_asmq10rgd.bam M="$ind"_dup_metrics.txt;
 ```
 
 
