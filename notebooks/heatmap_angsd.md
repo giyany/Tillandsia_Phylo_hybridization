@@ -16,5 +16,11 @@ Create a heatmap of relatedness with angsd. We did this before merging libraries
 infer gentype likelihood. using GATK model (-GL), maximum likelihood approach to choose the major and minor alleles (doMajorMinor), assume known major and minor alleles (-doMaf), minInd adjusted to number of samples.
 
 ```bash
-> angsd -bam bam_list.txt -GL 2 -doMajorMinor 1 -P 16 -doMaf 1 -SNP_pval 1e-6 -minMapQ 20 -minQ 20 -minInd 10 -minMaf 0.027 -doGlf 2 -out gatk_all_samples.txt
+> angsd -bam bam_list.txt -GL 2 -doMajorMinor 1 -P 16 -doMaf 1 -SNP_pval 1e-6 -minMapQ 20 -minQ 20 -minInd 10 -minMaf 0.027 -doGlf 2 -out gatk_all_samples  
 ```
+
+calculate covariate matrix 
+```python
+> python pcangsd.py -beagle gatk_all_samples.beagle.gz -o gatk_all_samples_pcangsd_out -minMaf 0.027
+```
+
