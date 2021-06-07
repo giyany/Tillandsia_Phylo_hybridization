@@ -23,4 +23,7 @@ calculate covariate matrix
 ```python
 > python pcangsd.py -beagle gatk_all_samples.beagle.gz -o gatk_all_samples_pcangsd_out -minMaf 0.027
 ```
-
+plot heatmap
+```R
+read.table("table.txt")
+```
