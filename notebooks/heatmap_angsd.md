@@ -25,5 +25,4 @@ calculate covariate matrix
 ```
 plot heatmap
 ```R
-read.table("table.txt")
 ```
