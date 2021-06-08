@@ -1,7 +1,7 @@
 # Tillandsia whole genome data: heatmap for major clades
 Updated: 1/6/2021
 
-Required: [ANGSD](https://github.com/ANGSD/angsd)
+Required: [ANGSD](https://github.com/ANGSD/angsd), [pcangsd](http://www.popgen.dk/software/index.php/PCAngsd)
 
 Create a heatmap of relatedness with angsd. We did this before merging libraries of the same accession which were prepared separately, to ensure they're the same samples (lab switches happen).
 
