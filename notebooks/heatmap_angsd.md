@@ -10,6 +10,7 @@ Create a heatmap of relatedness with angsd. We did this before merging libraries
 ```bash
 > ls ./*rg.bam | sed -e 's/\.//' -e 's/\///g' > bam_list.txt
 ```
+- ind_list.txt - list of your samples, same order as in bam_list.
 
 ## run ANGSD
 
@@ -23,6 +24,33 @@ calculate covariate matrix
 ```python
 > python pcangsd.py -beagle gatk_all_samples.beagle.gz -o gatk_all_samples_pcangsd_out -minMaf 0.027
 ```
-plot heatmap
+plot heatmap. The clade I work on is clade K, hence the name
+
 ```R
+library(RColorBrewer)
+library(dplyr)
+library(ggplot2)
+library(hrbrthemes)
+library(reshape2)
+
+gatk_cladeK<-as.matrix(read.table("gatk_all_samples.cov"))
+inds<-read.table("ind_list.txt")
+inds<-paste0(inds[,1])
+
+#replace diagonal with NA
+cladeK_covar<- gatk_cladeK %>% 
+  replace(., col(.) == row(.), NA)
+  
+#assign names
+rownames(cladeK_covar)<-inds
+colnames(cladeK_covar)<-inds
+
+#melt for ggplot2's needs. This changes the format of your dataset
+melted_cladeK<-melt(cladeK_covar)
+
+
+ggplot(melted_cladeK, aes(Var1, Var2, fill= value)) + 
+  geom_tile() +
+  scale_fill_distiller(palette = "RdYlBu") +
+  theme_minimal()
 ```
