@@ -105,4 +105,6 @@ do
 gatk --java-options "-Xmx16G" HaplotypeCaller -R /gpfs/data/fs71400/yardeni/Tillandsia_ref/tillandsia_fasciculata_assembly.sorted.fasta -I "$i"B_asmq10rgd.bam -O "$i"B_Tfas.g.vcf -ERC GVCF &
 done                
 wait                                                                                                                                                                                            
-``
+```
+
+## Join all per-sample vcf
