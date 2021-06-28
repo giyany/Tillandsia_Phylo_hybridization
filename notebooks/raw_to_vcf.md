@@ -48,7 +48,6 @@ Prepare your reference by indexing with bowtie2. Ours is a *Tillandsia fascicula
 bowtie2-build tillandsia_fasciculata_assembly.sorted.fasta Tfasc_bowtie2_index
 ```
 
-
 This script was adapted to run on as an array the Vienna Scientific Cluster (VSC) and will probably need to be adapted to run on other system.
 I love to keep the bowtie output as a log, hence the 2> redirect, which can be removed.
 
@@ -62,6 +61,8 @@ I love to keep the bowtie output as a log, hence the 2> redirect, which can be r
 #SBATCH -p mem_xxx
 #SBATCH --array=74,77-79,80-99
 
+source /home/fs71400/yardeni/.bashr
+conda init bash  
 conda activate my-env
 
 i=$SLURM_ARRAY_TASK_ID
@@ -77,6 +78,31 @@ picard AddOrReplaceReadGroups I="$ind"_asmq10.bam o="$ind"_asmq10rg.bam RGLB=WGD
 #mark duplicates. notice duplicates here are MARKED NOT REMOVED
 picard MarkDuplicates I="$ind"_asmq10rg.bam o="$ind"_asmq10rgd.bam M="$ind"_dup_metrics.txt;
 ```
+## per-sample variant calling using HaploTypeCaller
 
+This script was adapted to run on the Vienna Scientific Cluster (VSC) and in addition designed to run 9 tasks on 9 cores, using an array. So is the first value on the array is 70, this will run on numbers 70-79.
 
-
+```bash
+#!/bin/bash                                                                                                                                                                                                    
+#                                                                                                                                                                                               
+#SBATCH -J GATK                                                                                  
+#SBATCH -N 1               
+#SBATCH --ntasks-per-node=9         
+#SBATCH --ntasks-per-core=1
+#SBATCH -p mem_xxx
+#SBATCH --array=70,80,90                                                                                                                                                                                                                                                                                                       
+source /home/fs71400/yardeni/.bashr
+conda init bash  
+conda activate gatk-vcf                                                                                                                                                                                                                                                                                                                                                                                          
+#go to wd                                                                                                                                                                                                     
+cd /gpfs/data/fs71400/yardeni/WGS/vcf;                                                                                                                                                                             
+                                                                                                                                                                                                                   
+j=$SLURM_ARRAY_TASK_ID     
+((j+=9))                                                                                                                                                                                                           
+                                                                                                                                                                                                                   
+for ((i=$SLURM_ARRAY_TASK_ID; i<j; i++)                                                                                                                                        
+do
+gatk --java-options "-Xmx16G" HaplotypeCaller -R /gpfs/data/fs71400/yardeni/Tillandsia_ref/tillandsia_fasciculata_assembly.sorted.fasta -I "$i"B_asmq10rgd.bam -O "$i"B_Tfas.g.vcf -ERC GVCF &
+done                
+wait                                                                                                                                                                                            
+``
