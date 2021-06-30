@@ -108,3 +108,91 @@ wait
 ```
 
 ## Join all per-sample vcf
+
+Using GenotypeGVCFs to join all per-sample vcf into one file. For the process to finish within a mortal lifetime, I generated a databse using GenomicsDBimport. First, generate a sample map:
+
+```bash
+
+for file in *.g.vcf;
+do echo ${file/.g.vcf/} $file | sed 's/ /\t/g' >> sample_map;
+done
+```
+
+To generate a bed regions file according to coverage using frebayes' cov_to_regions.py.
+
+```bash
+#!/bin/bash
+#
+#SBATCH -J freebayes_parallel
+#SBATCH -N 1
+#SBATCH --ntasks-per-node=16
+#SBATCH --ntasks-per-core=1 
+#SBATCH -p mem_xxx
+#SBATCH --qos p71400_xxx                                                                                                                                                                     
+                                                                                                                                                                                                                   
+source /home/fs71400yardeni/.bashr
+conda init bash   
+conda activate freebyes-env
+                                                                                                                                                                                                                   
+## move to working directory                                                                                                                                                                                       
+                                                                                                                                                                                                                   
+cd /gpfs/data/fs71400/yardeni/Tillandsia_ref/
+
+bamtools coverage -in ../WGS/mapped_bams/19B_asmq10rgd.bam | coverage_to_regions.py tillandsia_fasciculata_assembly.sorted.fasta.fai 10000 > Tfas.fa.10k.regions.byCoverage 
+```
+
+then separated then by chr and corrected fields to bed format:
+
+```bash
+while read chr; do cat Tfas.fa.10k.regions.byCoverage | grep "$chr:" >> Tfas.fa.10k.regions.byCoverage_"$chr"; done < Tfas_scaffold_names.txt;
+for file in Tfas.fa.10k.regions.byCoverage_*; do sed -e 's/\:/\'$'\t/g' -e 's/\-/\'$'\t/g' "$file" > "$file".bed; done
+```
+
+finally, perform joint calling. The array contains all the Chr numbers in my reference:
+
+```bash
+
+#!/bin/bash
+#
+#SBATCH -J GATK4_JointHC
+#SBATCH --nodes=1
+#SBATCH --ntasks-per-node=48
+#SBATCH -p mem_xxx
+#SBATCH --qos=p71400_xxx
+#SBATCH --array=1-2321%4
+
+source /home/fs71400/yardeni/.bashrc                                                                                     
+conda init bash                                                                                                   
+conda activate gatk-vcf
+
+# go to working directory
+
+cd /gpfs/data/fs71400/yardeni/WGS/vcf
+
+# Run GenomicsDBImport
+
+$gatk --java-options "-Xmx32g -Xms4g" GenomicsDBImport \
+      --genomicsdb-workspace-path GenomicsDB_${SLURM_ARRAY_TASK_ID} \
+      --sample-name-map sample_map \
+      --tmp-dir /gpfs/data/fs71400/yardeni/WGS/vcf/tmp/ \
+      -L /gpfs/data/fs71400/yardeni/Tillandsia_ref/Tfas_cov_Scaffolds/Tfas.500.regions.byCov.Scaffold_Scaffold_${SLURM_ARRAY_TASK_ID}.bed \
+      --reader-threads 8
+
+# For each database directory make a vcf file using GenotypeGVCfs and concatenate all vcf files into one using bcftools
+
+$gatk --java-options "-Xmx8g" GenotypeGVCFs \
+      -R /gpfs/data/fs71400/yardeni/Tillandsia_ref/tillandsia_fasciculata_assembly.sorted.fasta  \
+      -V gendb://GenomicsDB_${SLURM_ARRAY_TASK_ID} \
+      -O PerChr.Variants.AllTillandsias.WGS.${SLURM_ARRAY_TASK_ID}.vcf.gz \
+      --tmp-dir /gpfs/data/fs71400/yardeni/WGS/vcf/tmp/
+
+bcftools concat $(for file in *.vcf.gz; do echo "$file "; done) > Variants.AllTillandsias.allChr.WGS.raw.full.vcf
+
+#generate stats
+
+conda activate my-env
+
+bcftools stats Variants.AllTillandsias.WGS.raw.full.vcf > Variants.AllTillandsias.WGS.raw.full.vcf_stats.txt
+SnpSift tstv Variants.AllTillandsias.WGS.raw.full.vcf > Variants.AllTillandsias.WGS.raw.full.snpsift_stats.txt
+
+```
