@@ -148,7 +148,7 @@ while read chr; do cat Tfas.fa.10k.regions.byCoverage | grep "$chr:" >> Tfas.fa.
 for file in Tfas.fa.10k.regions.byCoverage_*; do sed -e 's/\:/\'$'\t/g' -e 's/\-/\'$'\t/g' "$file" > "$file".bed; done
 ```
 
-finally, perform joint calling. The array contains all the Chr numbers in my reference:
+Perform joint calling. The array contains all the Chr numbers in my reference:
 
 ```bash
 
@@ -186,13 +186,17 @@ $gatk --java-options "-Xmx8g" GenotypeGVCFs \
       -O PerChr.Variants.AllTillandsias.WGS.${SLURM_ARRAY_TASK_ID}.vcf.gz \
       --tmp-dir /gpfs/data/fs71400/yardeni/WGS/vcf/tmp/
 
-bcftools concat $(for file in *.vcf.gz; do echo "$file "; done) > Variants.AllTillandsias.allChr.WGS.raw.full.vcf
+```
 
-#generate stats
+concatenate all vcf files into one vcf and generate some stats
 
-conda activate my-env
-
-bcftools stats Variants.AllTillandsias.WGS.raw.full.vcf > Variants.AllTillandsias.WGS.raw.full.vcf_stats.txt
-SnpSift tstv Variants.AllTillandsias.WGS.raw.full.vcf > Variants.AllTillandsias.WGS.raw.full.snpsift_stats.txt
-
+```bash
+conda activate my-env                                                                                                                                                                                             
+                                                                                                                                                                                                                   
+bcftools concat $(for file in *.vcf.gz; do echo "$file "; done) > Variants.AllTillandsias.allChr.WGS.raw.full.vcf                                                                                                  
+                                                                                                                                                                                                                   
+#generate stats                                                                                                                                                                                                    
+                                                                                                                                                                                                                   
+bcftools stats Variants.AllTillandsias.allChr.WGS.raw.full.vcf > Variants.AllTillandsias.WGS.raw.full.vcf_stats.txt                                                                                                
+SnpSift tstv Variants.AllTillandsias.allChr.WGS.raw.full.vcf > Variants.AllTillandsias.WGS.raw.full.snpsift_stats.txt
 ```
