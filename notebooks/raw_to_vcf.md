@@ -235,5 +235,35 @@ gatk SelectVariants \
 -V Variants.AllTillandsias.allChr.WGS.3bpindel.0.4missing.vcf.gz.withfilter.MQ.DP4_100.vcf \
 ```
 
+Basic filtering, not stringent:
 
+1. exclude indels and sites 3bp from indels, allow missing data below 40%
 
+```bash
+bcftools filter --SnpGap 3 -i 'F_MISSING<0.4' Variants.AllTillandsias.allChr.WGS.raw.full.vcf | bcftools view --exclude-types indels | bgzip > Variants.AllTillandsias.allChr.WGS.3bpindel.0.4missing.vcf.gz      
+tabix Variants.AllTillandsias.allChr.WGS.3bpindel.0.4missing.vcf.gz;
+```
+
+2. depth for genotype DP<100 and MQ <30, remove sites without genotype calls                                                                                                                                                
+
+```bash
+gatk VariantFiltration \                                                                                                                                                                      
+-R /gpfs/data/fs71400/yardeni/Tillandsia_ref/tillandsia_fasciculata_assembly.sorted.fasta \                                                                                                     
+-V Variants.AllTillandsias.allChr.WGS.3bpindel.0.4missing.vcf.gz \                                                                                                                             
+--filter-name "qual" \                                                                                       
+--filter-expression "QUAL < 30.00" \                                                                                                                                                         
+--filter-name "mq" \                                                                                                                                                            
+--filter-expression "MQ < 30.00" \                                                                                                                                                              
+--filter-name "dp" \ 
+--filter-expression "DP < 100" \                                                                                                                                                
+--genotype-filter-expression "DP < 10" \                                                                                                                                                
+--genotype-filter-name "genotypedepth" \                                                                                                                                       
+--output Variants.AllTillandsias.allChr.WGS.3bpindel.0.4missing.vcf.gz.withfilter.MQ.DP4_100.vcf                                                                                                                                                                                                                                                                                         
+#remove sites that had no genotype calls:                                                                                                                                              
+                                                                                                                                                                                                                   
+                                                                                                                                                                                                                   
+gatk SelectVariants \ 
+-V Variants.AllTillandsias.allChr.WGS.3bpindel.0.4missing.vcf.gz.withfilter.MQ.DP4_100.vcf \                                                                                                
+--set-filtered-gt-to-nocall \                                                                                           
+-O Variants.AllTillandsias.allChr.WGS.3bpindel.0.4missing.vcf.gz.withfilter.MQ.DP4_100.NoCall.vcf                 
+```
