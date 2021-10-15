@@ -78,9 +78,11 @@ picard AddOrReplaceReadGroups I="$ind"_asmq10.bam o="$ind"_asmq10rg.bam RGLB=WGD
 #mark duplicates. notice duplicates here are MARKED NOT REMOVED
 picard MarkDuplicates I="$ind"_asmq10rg.bam o="$ind"_asmq10rgd.bam M="$ind"_dup_metrics.txt;
 ```
-## per-sample variant calling using HaploTypeCaller
+
+## per-sample variant calling using HaploTypeCaller, includes non-variant sites with --output-mode.
 
 This script was adapted to run on the Vienna Scientific Cluster (VSC) and in addition designed to run 9 tasks on 9 cores, using an array. So is the first value on the array is 70, this will run on numbers 70-79.
+
 
 ```bash
 #!/bin/bash                                                                                                                                                                                                    
@@ -102,7 +104,7 @@ j=$SLURM_ARRAY_TASK_ID
                                                                                                                                                                                                                    
 for ((i=$SLURM_ARRAY_TASK_ID; i<j; i++)                                                                                                                                        
 do
-gatk --java-options "-Xmx16G" HaplotypeCaller -R /gpfs/data/fs71400/yardeni/Tillandsia_ref/tillandsia_fasciculata_assembly.sorted.fasta -I "$i"B_asmq10rgd.bam -O "$i"B_Tfas.g.vcf -ERC GVCF &
+gatk --java-options "-Xmx16G" HaplotypeCaller -R /gpfs/data/fs71400/yardeni/Tillandsia_ref/tillandsia_fasciculata_assembly.sorted.fasta -I "$i"B_asmq10rgd.bam -O "$i"B_Tfas.g.vcf -ERC GVCF --output-mode EMIT_ALL_CONFIDENT_SITES &
 done                
 wait                                                                                                                                                                                            
 ```
@@ -148,7 +150,7 @@ while read chr; do cat Tfas.fa.10k.regions.byCoverage | grep "$chr:" >> Tfas.fa.
 for file in Tfas.fa.10k.regions.byCoverage_*; do sed -e 's/\:/\'$'\t/g' -e 's/\-/\'$'\t/g' "$file" > "$file".bed; done
 ```
 
-Perform joint calling. The array contains all the Chr numbers in my reference:
+Perform joint calling and include non-variant sites. The array contains all the Chr numbers in my reference:
 
 ```bash
 
@@ -213,6 +215,11 @@ cd /gpfs/data/fs71400/yardeni/WGS/vcf;
 bcftools filter --SnpGap 3 -i 'F_MISSING<0.4' Variants.AllTillandsias.allChr.WGS.raw.full.vcf | bcftools view --exclude-types indels | bgzip > Variants.AllTillandsias.allChr.WGS.3bpindel.0.4missing.vcf.gz      
 tabix Variants.AllTillandsias.allChr.WGS.3bpindel.0.4missing.vcf.gz;                                                                                                                                               
                                                                                                                                                                                                                    
+
+#separate vcf into non-variant. MQ filtering will only apply to variants in the next step, and this steps removes the non-variants, which we will filter seperatedly and concatenate later.
+
+bcftools view -C0 VCF.AllTillandsias.allChr.WGS.nonvariant.3bpindel.0.4missing.vcf | bcftools sort - | bgzip > VCF.AllTillandsias.allChr.WGS.nonvariant.3bpindel.0.4missing.vcf.gz;
+
 #depth for genotype DP<100 and MQ <30 (not stringent, just basic)   
 
 conda activate gatk-vcf                                                                                                                                                                                            
@@ -220,15 +227,34 @@ conda activate gatk-vcf
 gatk VariantFiltration \                                                                                                                                                                                           
 -R /gpfs/data/fs71400/yardeni/Tillandsia_ref/tillandsia_fasciculata_assembly.sorted.fasta \                                                                                                                        
 -V Variants.AllTillandsias.allChr.WGS.3bpindel.0.4missing.vcf.gz \                                                                                                                                                 
---filter-name "qual" \                                                                                                                                                                                             
---filter-expression "QUAL < 30.00" \                                                                                                                                                                               
 --filter-name "mq" \                                                                                                                                                                                               
 --filter-expression "MQ < 30.00" \                                                                                                                                                                                 
 --filter-name "dp" \                                                                                                                                                                                               
 --filter-expression "DP < 100" \                                                                                                                                                                                   
 --genotype-filter-expression "DP < 10" \                                                                                                                                                                           
 --genotype-filter-name "genotypedepth" \                                                                                                                                                                           
---output Variants.AllTillandsias.allChr.WGS.3bpindel.0.4missing.vcf.gz.withfilter.MQ.DP4_100.vcf                                                                                                                                                                                                                                                                                                                                 
+--output Variants.AllTillandsias.allChr.WGS.3bpindel.0.4missing.vcf.gz.withfilter.MQ.DP10_100.vcf
+
+bgzip Variants.AllTillandsias.allChr.WGS.3bpindel.0.4missing.vcf.gz.withfilter.MQ.DP10_100.vcf;
+tabix Variants.AllTillandsias.allChr.WGS.3bpindel.0.4missing.vcf.gz.withfilter.MQ.DP10_100.vcf.gz;
+
+#now filter just non-variants
+
+gatk VariantFiltration \
+-R /gpfs/data/fs71400/yardeni/Tillandsia_ref/tillandsia_fasciculata_assembly.sorted.fasta \
+-V VCF.AllTillandsias.allChr.WGS.nonvariant.3bpindel.0.4missing.vcf.gz \
+--filter-name "dp" \
+--filter-expression "DP < 100" \
+--genotype-filter-expression "DP < 10" \
+--genotype-filter-name "genotypedepth" \
+--output VCF.AllTillandsias.allChr.WGS.nonvariant.3bpindel.0.4missing.DP10_100.vcf
+
+bgzip VCF.AllTillandsias.allChr.WGS.nonvariant.3bpindel.0.4missing.DP10_100.vcf;
+tabix VCF.AllTillandsias.allChr.WGS.nonvariant.3bpindel.0.4missing.DP10_100.vcf.gz;
+
+#concatenate the two files                                                                                                                                                                                                                                                                                                                                 
+bcftools concat VCF.AllTillandsias.allChr.WGS.nonvariant.3bpindel.0.4missing.DP10_100.vcf.gz Variants.AllTillandsias.allChr.WGS.3bpindel.0.4missing.vcf.gz.withfilter.MQ.DP4_100.vcf.gz -a -d all -o VCF.AllTillandsias.allChr.WGS.variant.nonvariant.3bpindel.0.4missing.MQ.DP10_100.vcf -O v;
+
 #remove sites that had no genotype calls:                                                                                                                                                                          
                                    
 gatk SelectVariants \                                         

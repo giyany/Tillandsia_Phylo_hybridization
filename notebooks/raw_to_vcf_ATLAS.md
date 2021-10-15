@@ -1,5 +1,6 @@
 # Tillandsia whole genome data: from sequencer to VCF
 Updated: 10/09/2021
+#NOTE, This pipeline wasn't used for publication and this file is incomplete and untested
 
 Required: [Trimmomatic](http://www.usadellab.org/cms/?page=trimmomatic), [deML](https://github.com/grenaud/deML), [samtools](https://github.com/samtools/samtools),[bamtools](https://github.com/pezmaster31/bamtools), [bedtools](https://github.com/arq5x/bedtools2),[trim_galore](https://www.bioinformatics.babraham.ac.uk/projects/trim_galore/), [bowtie2](http://bowtie-bio.sourceforge.net/bowtie2/index.shtml), [picard-tools](https://broadinstitute.github.io/picard/), [fastqc](https://www.bioinformatics.babraham.ac.uk/projects/fastqc/)
 
@@ -87,12 +88,43 @@ perform local realignment
 ```bash
 ll *.bam | awk '{print $9}' >> bam_files.list
 java -jar GenomeAnalysisTK.jar -T RealignerTargetCreator -R tillandsia_fasciculata_assembly.sorted.fasta -I bam_files.list -o gatk.realigner.intervals
-for file in *.bam; java -jar ~/GenomeAnalysisTK.jar -T indelRealigner -R tillandsia_fasciculata_assembly.sorted.fasta -I "$file" -targetIntervals gatk.reliagner.intervals - "$file".realigned.gatk.bam; end
+for file in *.bam; java -jar ~/GenomeAnalysisTK.jar -T indelRealigner -R tillandsia_fasciculata_assembly.sorted.fasta -I "$file" -targetIntervals gatk.reliagner.intervals -o "$file".realigned.gatk.bam; end
 ```
 
-split read-groups according to length
+#split read-groups according to length
+#I'm also renaming the gatk bai file so it'll make sense for ATLAS
+#RG file is just a any-space delimited file with the RG on the 1st column and 2nd column stating if it's paired or single, in case of single there's a 3rd column stating maximum cycle number.
 
 
+```bash
+
+#ugly script that generates the RG file
+for file in (cat bam_files.list); samtools view -s 0.0001 "$file" | grep "RG" | awk '{print $14}' | cut -d : -f 3 | awk -F '\t' -v OFS='\t' '{ $(NF+1) = "paired"; print }' - >> "$file"_RG.txt; sort "$file"_RG.txt | uniq >> "$file"_RG_atlas.txt; rm "$file"_RG.txt; end
+
+#actually split files
+for file in (cat bam_files.list); echo "$file"; mv "$file".realigned.gatk.bai "$file".realigned.gatk.bam.bai; atlas task=splitMerge bam="$file".realigned.gatk.bam readGroupSettings="$file"_RG.txt_atlas_settings.txt;end
+```
+
+#this can take very long, approximately 1hr per accession.
+#skipped step os estimating post-mortem damage (PMD)
+#recalibrate base quality scores. I did this using the GATK3 pipeline, with a vcf file previously generated with GATK
+``bash
+gatk BaseRecalibrator -I "$i"_asmq10rgd.bam.realigned.gatk_mergedReads.bam -R tillandsia_fasciculata_assembly.sorted.fasta --known-sites Variants.WGS.variant.only.SnpGap3.indels.missing0.4.MQ.DP10_100.
+vcf.gz --output "$i".realigend.mergereads.recal.table;
+
+gatk ApplyBQSR -R tillandsia_fasciculata_assembly.sorted.fasta -I "$i"_asmq10rgd.bam.realigned.gatk_mergedReads.bam --bqsr-recal-file "$i".realigend.mergereads.recal.table --output "$i"_realigned.mergereads.recal.bam &
+```
+# infer genotype likelihoods with ATLAS (glf file)
+```bash
+mv "$i"_realigned.mergereads.recal.bai "$i"_realigned.mergereads.recal.bam.bai;
+atlas task=GLF bam="$i"_realigned.mergereads.recal.bam printAll
+```
+# use it to identify major-minor alleles (task=majorminor)
+```bash
+#get glf file list
+ll *.glf | awk '{print $9}' >> glf_list.txt
+atlas task=majorMinor glf=glf_list.txt out=AllTillandsia.raw.full.invariant.variant.vcf
+```
 
 
 
