@@ -1,11 +1,13 @@
 # Tillandsia whole genome data: from sequencer to VCF
-Updated: 28/06/2021
+Updated: 21/10/2021
 
-Required: [Trimmomatic](http://www.usadellab.org/cms/?page=trimmomatic), [deML](https://github.com/grenaud/deML), [samtools](https://github.com/samtools/samtools),[bamtools](https://github.com/pezmaster31/bamtools), [bedtools](https://github.com/arq5x/bedtools2),[trim_galore](https://www.bioinformatics.babraham.ac.uk/projects/trim_galore/), [bowtie2](http://bowtie-bio.sourceforge.net/bowtie2/index.shtml), [picard-tools](https://broadinstitute.github.io/picard/), [fastqc](https://www.bioinformatics.babraham.ac.uk/projects/fastqc/), [GATK HaplotypeCaller](https://gatk.broadinstitute.org/hc/en-us/articles/360037225632-HaplotypeCaller)
+Required: [Trimmomatic](http://www.usadellab.org/cms/?page=trimmomatic), [deML](https://github.com/grenaud/deML), [samtools](https://github.com/samtools/samtools),[bamtools](https://github.com/pezmaster31/bamtools), [bedtools](https://github.com/arq5x/bedtools2),[trim_galore](https://www.bioinformatics.babraham.ac.uk/projects/trim_galore/), [bowtie2](http://bowtie-bio.sourceforge.net/bowtie2/index.shtml), [picard-tools](https://broadinstitute.github.io/picard/), [fastqc](https://www.bioinformatics.babraham.ac.uk/projects/fastqc/), [GATK HaplotypeCaller](https://gatk.broadinstitute.org/hc/en-us/articles/360037225632-HaplotypeCaller), [bcftools](https://samtools.github.io/bcftools/bcftools.html), [vcftools](http://vcftools.sourceforge.net/), [SnpSift](http://pcingola.github.io/SnpEff/)
 
-Process raw whole-genome-sequencing data to variant call file. Quality control, pre-processing and variant calling.
+#Overview: 
 
-Overall, the data was sequenced in over 4 different lanes. Here I'm presenting an example of processing a single lane (called Lib3) but the same applies to all lanes. 
+Process raw whole-genome-sequencing data to variant call file. Quality control, pre-processing, variant calling and filtering.
+
+The data was sequenced in over 4 different lanes. Here I'm presenting an example of processing a single lane (called Lib3) but the same applies to all lanes. 
 
 ## List of metadata files
 - P5P7_for_demulti - tab delimited file with sample name and indices used. See description in the [deML format examples](https://github.com/grenaud/deML)
@@ -18,6 +20,7 @@ VBCF gave us the raw library in BAM format so the code fits that. --bamtags tell
 ```bash
 > deML -i P5P7_for_demulti --bamtags BC,QT,B2,Q2 -o Lib3-demulti_deML.bam -s demult_stats.txt -e demult_unassigned.txt Lib3_raw.bam
 ```
+
 Seperating the demultiplexed file to many BAM files, converting to FASTQ & generating a report while at it. Previously used samtools for this step but no longer do due to [this behaviour of adding unassigned reads](https://github.com/samtools/samtools/issues/896) 
 
 ```bash
@@ -29,7 +32,7 @@ done < ind_list.txt
 ```
 
 ## trim & produce fastqc reports 
-_
+
 Compare the raw fastqc reports with the trimmed. This script uses 8 cores but use whatever is available to you.
 the output from trim_galore is, by default, files named "$ind"\_Lib3_R1_val_1.fq, "$ind"\_Lib3_R2_val_2.fq for paired end data.
 
@@ -143,7 +146,7 @@ cd /gpfs/data/fs71400/yardeni/Tillandsia_ref/
 bamtools coverage -in ../WGS/mapped_bams/19B_asmq10rgd.bam | coverage_to_regions.py tillandsia_fasciculata_assembly.sorted.fasta.fai 10000 > Tfas.fa.10k.regions.byCoverage 
 ```
 
-then separated then by chr and corrected fields to bed format:
+then separated by chr and corrected fields to bed format:
 
 ```bash
 while read chr; do cat Tfas.fa.10k.regions.byCoverage | grep "$chr:" >> Tfas.fa.10k.regions.byCoverage_"$chr"; done < Tfas_scaffold_names.txt;
@@ -189,7 +192,6 @@ $gatk --java-options "-Xmx8g" GenotypeGVCFs \
       --tmp-dir /gpfs/data/fs71400/yardeni/WGS/vcf/tmp/
 
 ```
-
 concatenate all vcf files into one vcf and generate some stats
 
 ```bash
@@ -201,95 +203,78 @@ bcftools concat $(for file in *.vcf.gz; do echo "$file "; done) > Variants.AllTi
                                                                                                                                                                                                                    
 bcftools stats Variants.AllTillandsias.allChr.WGS.raw.full.vcf > Variants.AllTillandsias.WGS.raw.full.vcf_stats.txt                                                                                                
 SnpSift tstv Variants.AllTillandsias.allChr.WGS.raw.full.vcf > Variants.AllTillandsias.WGS.raw.full.snpsift_stats.txt
+vcftools 
+```
 
-#some basic filtering for now
 
-conda activate freebyes-env                                                                                                                                                                                        
-                                                                                                                                                                                                                   
-#go to wd                                                                                                                                                                                                          
-                                                                                                                                                                                                                   
-cd /gpfs/data/fs71400/yardeni/WGS/vcf;                                                                                                                                                                             
-                                                                                                                                                                                                                   
-#remove indels and 3bp around indels, allow missing <0.4 & index file
+## Filtering (basic)
 
-bcftools filter --SnpGap 3 -i 'F_MISSING<0.4' Variants.AllTillandsias.allChr.WGS.raw.full.vcf | bcftools view --exclude-types indels | bgzip > Variants.AllTillandsias.allChr.WGS.3bpindel.0.4missing.vcf.gz      
-tabix Variants.AllTillandsias.allChr.WGS.3bpindel.0.4missing.vcf.gz;                                                                                                                                               
-                                                                                                                                                                                                                   
+```bash
 
-#separate vcf into non-variant. MQ filtering will only apply to variants in the next step, and this steps removes the non-variants, which we will filter seperatedly and concatenate later.
+#set DP=0 to missing (./.) then use bcftools to allow max 20% missing data, exclude indels and 3bp around indels. The missing data filtering is not final, but only makes the file more managable.
 
-bcftools view -C0 VCF.AllTillandsias.allChr.WGS.nonvariant.3bpindel.0.4missing.vcf | bcftools sort - | bgzip > VCF.AllTillandsias.allChr.WGS.nonvariant.3bpindel.0.4missing.vcf.gz;
+echo "make file manageable, filter around SNPs, missing 20% allowed"
+vcftools --gzvcf Variants.AllTillandsias.allChr.WGS.raw.full.vcf.gz --minDP 1 --recode --recode-INFO-all -c | bcftools filter --SnpGap 3 -i 'F_MISSING<0.2' | bcftools view --exclude-types indels -e 'ALT="*"' -Oz > Variants.AllTillandsias.allChr.WGS.3bpindel.0.2missing.vcf.gz
+tabix Variants.AllTillandsias.allChr.WGS.3bpindel.0.2missing.vcf.gz;
+echo "generate stats"
+bcftools stats Variants.AllTillandsias.allChr.WGS.3bpindel.0.2missing.vcf.gz > Variants.AllTillandsias.allChr.WGS.3bpindel.0.2missing.vcf_stats.txt
+SnpSift tstv Variants.AllTillandsias.allChr.WGS.3bpindel.0.2missing.vcf.gz > Variants.AllTillandsias.allChr.WGS.3bpindel.0.2missing.vcf.gz_snpsift.txt
 
-#depth for genotype DP<100 and MQ <30 (not stringent, just basic)   
+#removing known TEs
+echo "remove TEs"
+bedtools intersect -v -header -a Variants.AllTillandsias.allChr.WGS.3bpindel.0.2missing.vcf.gz -b /gpfs/data/fs71400/yardeni/Tillandsia_ref//tillandsia_fasciculata_assembly.sorted.25_scaffolds.fasta.mod.EDTA.intact.no_unknown.gff3 | bgzip > Variants.AllTillandsias.allChr.WGS.3bpindel.0.2missing.No_TEs_EDTA.vcf.gz
+tabix Variants.AllTillandsias.allChr.WGS.3bpindel.0.2missing.No_TEs_EDTA.vcf.gz
 
-conda activate gatk-vcf                                                                                                                                                                                            
-                                                                                                                                                                                                                   
-gatk VariantFiltration \                                                                                                                                                                                           
--R /gpfs/data/fs71400/yardeni/Tillandsia_ref/tillandsia_fasciculata_assembly.sorted.fasta \                                                                                                                        
--V Variants.AllTillandsias.allChr.WGS.3bpindel.0.4missing.vcf.gz \                                                                                                                                                 
---filter-name "mq" \                                                                                                                                                                                               
---filter-expression "MQ < 30.00" \                                                                                                                                                                                 
---filter-name "dp" \                                                                                                                                                                                               
---filter-expression "DP < 100" \                                                                                                                                                                                   
---genotype-filter-expression "DP < 10" \                                                                                                                                                                           
---genotype-filter-name "genotypedepth" \                                                                                                                                                                           
---output Variants.AllTillandsias.allChr.WGS.3bpindel.0.4missing.vcf.gz.withfilter.MQ.DP10_100.vcf
-
-bgzip Variants.AllTillandsias.allChr.WGS.3bpindel.0.4missing.vcf.gz.withfilter.MQ.DP10_100.vcf;
-tabix Variants.AllTillandsias.allChr.WGS.3bpindel.0.4missing.vcf.gz.withfilter.MQ.DP10_100.vcf.gz;
-
-#now filter just non-variants
-
+conda activate gatk-vcf
+echo "filter for quality"
 gatk VariantFiltration \
 -R /gpfs/data/fs71400/yardeni/Tillandsia_ref/tillandsia_fasciculata_assembly.sorted.fasta \
--V VCF.AllTillandsias.allChr.WGS.nonvariant.3bpindel.0.4missing.vcf.gz \
---filter-name "dp" \
---filter-expression "DP < 100" \
---genotype-filter-expression "DP < 10" \
+-V Variants.AllTillandsias.allChr.WGS.3bpindel.0.2missing.No_TEs_EDTA.vcf.gz \
+--filter-name "mq" \
+--filter-expression "MQ < 20.00" \
+--genotype-filter-expression "DP < 4" \
 --genotype-filter-name "genotypedepth" \
---output VCF.AllTillandsias.allChr.WGS.nonvariant.3bpindel.0.4missing.DP10_100.vcf
+--filter-name "QD" \
+--filter-expression "QD < 4.00" \
+--filter-name "FS" \
+--filter-expression "FS > 40.00" \
+--filter-name "SOR" \
+--filter-expression "SOR > 3.00" \
+--output Variants.AllTillandsias.allChr.WGS.3bpindel.0.2missing.No_TEs_EDTA.MQ15_DP4.vcf.gz
 
-bgzip VCF.AllTillandsias.allChr.WGS.nonvariant.3bpindel.0.4missing.DP10_100.vcf;
-tabix VCF.AllTillandsias.allChr.WGS.nonvariant.3bpindel.0.4missing.DP10_100.vcf.gz;
+echo "remove sites that had no genotype calls:"
 
-#concatenate the two files                                                                                                                                                                                                                                                                                                                                 
-bcftools concat VCF.AllTillandsias.allChr.WGS.nonvariant.3bpindel.0.4missing.DP10_100.vcf.gz Variants.AllTillandsias.allChr.WGS.3bpindel.0.4missing.vcf.gz.withfilter.MQ.DP4_100.vcf.gz -a -d all -o VCF.AllTillandsias.allChr.WGS.variant.nonvariant.3bpindel.0.4missing.MQ.DP10_100.vcf -O v;
+conda activate gatk-vcf
 
-#remove sites that had no genotype calls:                                                                                                                                                                          
-                                   
-gatk SelectVariants \                                         
--V Variants.AllTillandsias.allChr.WGS.3bpindel.0.4missing.vcf.gz.withfilter.MQ.DP4_100.vcf \
-```
+gatk SelectVariants \
+        -V  Variants.AllTillandsias.allChr.WGS.3bpindel.0.2missing.No_TEs_EDTA.MQ15_DP4.vcf.gz \
+        --set-filtered-gt-to-nocall \
+        --remove-unused-alternates \
+        --output  Variants.AllTillandsias.allChr.WGS.3bpindel.0.2missing.No_TEs_EDTA.MQ15_DP4.NoCall.vcf.gz
 
-Basic filtering, not stringent:
+conda activate my-env
 
-1. exclude indels and sites 3bp from indels, allow missing data below 40%
+### I want to filter for MAF, but this filter will remove all non-variant sites. In order to keep the nonvariant sites, and since the filter is only relevant for variant sites,
+### in the next step I seperate the vcf into variant and non-variant. I then produce stats to see that the numbers make sense, and only then proceed filtering.
 
-```bash
-bcftools filter --SnpGap 3 -i 'F_MISSING<0.4' Variants.AllTillandsias.allChr.WGS.raw.full.vcf | bcftools view --exclude-types indels | bgzip > Variants.AllTillandsias.allChr.WGS.3bpindel.0.4missing.vcf.gz      
-tabix Variants.AllTillandsias.allChr.WGS.3bpindel.0.4missing.vcf.gz;
-```
+bcftools view -C0 Variants.AllTillandsias.allChr.WGS.3bpindel.0.2missing.No_TEs_EDTA.MQ15_DP4.NoCall.vcf.gz -Oz > Variants.AllTillandsias.allChr.WGS.3bpindel.0.2missing.No_TEs_EDTA.MQ15_DP4.NoCall.nonvariant.vcf.gz
+tabix Variants.AllTillandsias.allChr.WGS.3bpindel.0.2missing.No_TEs_EDTA.MQ15_DP4.NoCall.nonvariant.vcf.gz
 
-2. depth for genotype DP<100 and MQ <30, remove sites without genotype calls                                                                                                                                                
+###filter MAF, this file will results in only variants
 
-```bash
-gatk VariantFiltration \                                                                                                                                                                      
--R /gpfs/data/fs71400/yardeni/Tillandsia_ref/tillandsia_fasciculata_assembly.sorted.fasta \                                                                                                     
--V Variants.AllTillandsias.allChr.WGS.3bpindel.0.4missing.vcf.gz \                                                                                                                             
---filter-name "qual" \                                                                                       
---filter-expression "QUAL < 30.00" \                                                                                                                                                         
---filter-name "mq" \                                                                                                                                                            
---filter-expression "MQ < 30.00" \                                                                                                                                                              
---filter-name "dp" \ 
---filter-expression "DP < 100" \                                                                                                                                                
---genotype-filter-expression "DP < 10" \                                                                                                                                                
---genotype-filter-name "genotypedepth" \                                                                                                                                       
---output Variants.AllTillandsias.allChr.WGS.3bpindel.0.4missing.vcf.gz.withfilter.MQ.DP4_100.vcf                                                                                                                                                                                                                                                                                         
-#remove sites that had no genotype calls:                                                                                                                                              
-                                                                                                                                                                                                                   
-                                                                                                                                                                                                                   
-gatk SelectVariants \ 
--V Variants.AllTillandsias.allChr.WGS.3bpindel.0.4missing.vcf.gz.withfilter.MQ.DP4_100.vcf \                                                                                                
---set-filtered-gt-to-nocall \                                                                                           
--O Variants.AllTillandsias.allChr.WGS.3bpindel.0.4missing.vcf.gz.withfilter.MQ.DP4_100.NoCall.vcf                 
-```
+bcftools view -i 'MAF>0.045' Variants.AllTillandsias.allChr.WGS.3bpindel.0.2missing.No_TEs_EDTA.MQ15_DP4.NoCall.vcf.gz -Oz > Variants.AllTillandsias.allChr.WGS.3bpindel.0.2missing.No_TEs_EDTA.MQ15_DP4.MAF0.045.NoCall.onlyvariants.vcf.gz
+tabix Variants.AllTillandsias.allChr.WGS.3bpindel.0.2missing.No_TEs_EDTA.MQ15_DP4.MAF0.045.NoCall.onlyvariants.vcf.gz
+
+###merge the files
+
+bcftools concat -a -D Variants.AllTillandsias.allChr.WGS.3bpindel.0.2missing.No_TEs_EDTA.MQ15_DP4.NoCall.nonvariant.vcf.gz Variants.AllTillandsias.allChr.WGS.3bpindel.0.2missing.No_TEs_EDTA.MQ15_DP4.MAF0.045.NoCall.onlyvariants.vcf.gz -Oz
+ > Variants.AllTillandsias.allChr.WGS.3bpindel.0.2missing.No_TEs_EDTA.MQ15_DP4.MAF0.045.NoCall.vcf.gz
+
+echo "last filter for missing and leave only sites that pass"
+
+bcftools filter -i 'F_MISSING<0.2' Variants.AllTillandsias.allChr.WGS.3bpindel.0.2missing.No_TEs_EDTA.MQ15_DP4.MAF0.045.NoCall.vcf.gz | bcftools view -f .,PASS --trim-alt-alleles -Oz > Variants.AllTillandsias.allChr.WGS.3bpindel.0.2missin
+g.No_TEs_EDTA.MQ15_DP4.MAF0.045.NoCall.PASS.vcf.gz
+
+bcftools stats Variants.AllTillandsias.allChr.WGS.3bpindel.0.2missing.No_TEs_EDTA.MQ15_DP4.MAF0.045.NoCall.PASS.vcf.gz > Variants.AllTillandsias.allChr.WGS.3bpindel.0.2missing.No_TEs_EDTA.MQ15_DP4.MAF0.045.NoCall.PASS.vcf.gz_stats.txt
+SnpSift tstv Variants.AllTillandsias.allChr.WGS.3bpindel.0.2missing.No_TEs_EDTA.MQ15_DP4.MAF0.045.NoCall.PASS.vcf.gz > Variants.AllTillandsias.allChr.WGS.3bpindel.0.2missing.No_TEs_EDTA.MQ15_DP4.MAF0.045.NoCall.PASS.vcf.gz_snpsift.txt
+
