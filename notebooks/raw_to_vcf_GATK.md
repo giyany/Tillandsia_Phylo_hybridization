@@ -207,7 +207,7 @@ vcftools
 ```
 
 
-## Filtering (basic)
+## Filtering (final for downstream analysis)
 
 ```bash
 
