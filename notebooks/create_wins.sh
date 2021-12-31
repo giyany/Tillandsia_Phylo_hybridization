@@ -1,3 +1,5 @@
+#take vcf and bed files, create genomic windows in phylip
+
 #!/bin/bash
 #
 #SBATCH -J makewins
@@ -76,4 +78,13 @@ paste winfile.sorted.txt var_site_nr2.txt > win_phylip_snp_nr.txt
 awk -v min="$minsnp" '$2<min' win_phylip_snp_nr.txt > wins_to_remove2.txt
 while read file; do rm "$file"*; done < wins_to_remove2.txt
 awk -v min="$minsnp" '$2>=min {print $1}' win_phylip_snp_nr.txt > wins_stay.txt
+
+###construct tree and assess branch-support with ultra-fast bootstrap estimation. Don't estimate model, I define it with -m
+
+conda activate iqtree
+
+for file in *ascbias.phy
+do
+iqtree -s "$file" -m TVMe+ASC+R2 -T 16 -B 1000
+done
 
