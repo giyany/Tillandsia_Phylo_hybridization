@@ -1,4 +1,4 @@
-#take vcf and bed files, create genomic windows in phylip
+#take vcf and bed files, create genomic windows in phylip, remove those with <n SNPs, estimate ML tree for each window
 
 #!/bin/bash
 #
