@@ -69,7 +69,7 @@ done
 
 #append into a very useful file
 
-paste winfile.sorted.txt var_site_nr2.txt > win_phylip_snp_nr.txt
+paste wins_stay.txt var_site_nr2.txt > win_phylip_snp_nr.txt
 
 ##remove wins with <nr or snps
 
