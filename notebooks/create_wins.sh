@@ -9,14 +9,12 @@
 #SBATCH -p 
 #SBATCH --qos
 
-source /home/fs71400/yardeni/.bashrc 
+source /home/yardeni/.bashrc 
 conda init bash
-
-#go to wd
 
 #directory
 #dir=tmp4
-#bed file used to define windows. I'm working with 100kb wins today
+#bed file used to define windows. I'm working with 10kb wins today
 bed=10kb_wins_all.bed
 #file I wanna slice
 vcf=Variants.Only.twisst.run1.25scaffold.vcf.gz
@@ -25,11 +23,11 @@ run="run4"
 #min num of variable sites allowed. Any window with fewer SNPs will be discarded
 minsnp=40
 
-conda activate my-env
+#conda activate my-env
 
 #cd "$dir"
 
-#bes is tab-delimited and I replaced the tabs so bcftools can read it an our filenames behave
+#bes is tab-delimited and I replaced the tabs so bcftools can read it and our filenames behave
 sed 's/\t/:/' "$bed" | sed 's/\t/-/' | sort > winfile.sorted.txt
 
 ##create all windows
@@ -73,13 +71,14 @@ done
 
 paste winfile.sorted.txt var_site_nr2.txt > win_phylip_snp_nr.txt
 
-#remove wins with <nr or snps
+##remove wins with <nr or snps
 
 awk -v min="$minsnp" '$2<min' win_phylip_snp_nr.txt > wins_to_remove2.txt
 while read file; do rm "$file"*; done < wins_to_remove2.txt
 awk -v min="$minsnp" '$2>=min {print $1}' win_phylip_snp_nr.txt > wins_stay.txt
 
-###construct tree and assess branch-support with ultra-fast bootstrap estimation. Don't estimate model, I define it with -m
+###construct tree and assess branch-support with ultra-fast bootstrap estimation. Don't estimate model, define it with -m. 
+#My model is TVMe with 2 rates and ascertainment bias correction 
 
 conda activate iqtree
 
