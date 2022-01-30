@@ -4,8 +4,8 @@
 #SBATCH -N 1
 #SBATCH --ntasks-per-node=16
 #SBATCH --ntasks-per-core=1
-#SBATCH -p 
-#SBATCH --qos
+#SBATCH -p mem_0384
+#SBATCH --qos p71400_0384
 
 source /home/fs71400/yardeni/.bashrc 
 conda init bash
@@ -13,67 +13,88 @@ conda init bash
 #go to wd
 
 #directory
-#dir=tmp4
-#bed file used to define windows. I'm working with 100kb wins today
-bed=10kb_wins_all.bed
+dir=/gpfs/data/fs71400/yardeni/WGS/astral/gen_wins_noSA/
+#file used to define windows. I'm working with 100kb wins today
+winfile=100kb_wins_all.sorted.txt
 #file I wanna slice
-vcf=Variants.Only.twisst.run1.25scaffold.vcf.gz
+vcf=../Only.Variants.onlyMexican.allChr.WGS.3bpindel.0.2missing.No_TEs_EDTA.MQ15_DP4.MAF0.045.NoCall.PASS.vcf.gz
 #name the run because I like order
-run="run4"
+run="wins.100kb.no.SA"
 #min num of variable sites allowed. Any window with fewer SNPs will be discarded
 minsnp=40
 
 conda activate my-env
 
-#cd "$dir"
+cd "$dir"
 
-#bes is tab-delimited and I replaced the tabs so bcftools can read it an our filenames behave
-sed 's/\t/:/' "$bed" | sed 's/\t/-/' | sort > winfile.sorted.txt
+rm *.vcf.gz
+rm *.txt
+rm *.phy
+### my file was tab-delimited and I replaced the tabs so bcftools can read it
+### sed 's/\t/:/' ../tillandsia_fasciculata_25_scaffold.windows.100k.bed | sed 's/\t/-/' | sort > 100kb_wins_all.sorted.txt
 
-##create all windows
+## create all windows
 echo 'creating all windows'
+
 while read region; do 
-	echo "$region"; bcftools view -r "$region" ../Variants.Only.twisst.run1.25scaffold.vcf.gz | bgzip > "$region".window.vcf.gz; 
-done < winfile.sorted.txt
+	echo "$region"; bcftools view -r "$region" "$vcf" | bgzip > "$region".window.vcf.gz; 
+done < ../"$winfile"
 
-#count snp nr.
+mkdir vcf_backup
+cp *.vcf.gz vcf_backup;
+
+#### count snp nr.
 echo 'counting snp nr'
-while read region; do bcftools view "$region".window.vcf.gz| grep -v "#" | wc -l >> win_vcf_snpnr.txt; done < winfile.sorted.txt
+while read region; do bcftools view "$region".window.vcf.gz| grep -v "#" | wc -l >> all_win_vcf_snpnr.txt; done < ../"$winfile"
 
-#append into a very useful file
+#### append into a very useful file
 
-paste winfile.sorted.txt win_vcf_snpnr.txt > vcf_site_nr.txt
+paste ../"$winfile" all_win_vcf_snpnr.txt > all_vcf_files_with_snpnr.txt
 
-#remove those with <minsnp
+####remove those with <minsnp
 echo 'removing wins with not enough snps'
-awk -v min="$minsnp" '$2<min {print $1}' vcf_site_nr.txt > wins_to_remove.txt
-awk -v min="$minsnp" '$2>=min {print $1}' vcf_site_nr.txt > wins_stay.txt
+awk -v min="$minsnp" '$2<min {print $1}' all_vcf_files_with_snpnr.txt > wins_to_remove.txt
+awk -v min="$minsnp" '$2>=min {print $1}' all_vcf_files_with_snpnr.txt > wins_stay.txt
 
 while read file; do rm "$file"*; done < wins_to_remove.txt
 
-#convert to phylip and remove invariable sites created after IUPAC resolution, so we can use ascertainment bias correction for tree construction;
+### convert to phylip and remove invariable sites created after IUPAC resolution, so we can use ascertainment bias correction for tree construction;
 echo 'converting to phylip'
 while read region; do 
 	python /gpfs/data/fs71400/yardeni/Programs/vcf2phylip-master/vcf2phylip.py -i "$region".window.vcf.gz --resolve-IUPAC; 
 	python /gpfs/data/fs71400/yardeni/Programs/raxml_ascbias-master/ascbias.py -p "$region".window.min4.phy -o "$region".window.ascbias.phy;
-done < winfile.sorted.txt
+done < ../"$winfile"
 
 rm *.felsenstein
 rm *.stamatakis
-#we're going to count the nr. of sites and again remove those with too few sites.
-#grab the number of variable sites for each window from phylip head
+
+### we're going to count the nr. of sites and again remove those with too few sites.
+### grab the number of variable sites for each window from phylip head
 
 for file in *.ascbias.phy; do
-	awk 'NR==1 {print $2}' "$file" >> var_site_nr2.txt;
+	awk 'NR==1 {print $2}' "$file" >> all_phy_snp_nr.txt;
 done
 
-#append into a very useful file
+####append into a very useful file
 
-paste winfile.sorted.txt var_site_nr2.txt > win_phylip_snp_nr.txt
+paste wins_stay.txt all_phy_snp_nr.txt > win_phylip_snp_nr.txt
 
-#remove wins with <nr or snps
+#####remove wins with <nr or snps
 
-awk -v min="$minsnp" '$2<min' win_phylip_snp_nr.txt > wins_to_remove2.txt
+awk -v min="$minsnp" '$2<min {print $1}' win_phylip_snp_nr.txt > wins_to_remove2.txt
 while read file; do rm "$file"*; done < wins_to_remove2.txt
 awk -v min="$minsnp" '$2>=min {print $1}' win_phylip_snp_nr.txt > wins_stay.txt
+
+conda activate iqtree
+
+for file in *ascbias.phy
+do
+iqtree -s "$file" -m TVMe+ASC+R2 -T 16 -B 1000
+done
+
+#not all the files may be used to create windows, because sometimes there is literally only missing data for one of the samples and iqtree will not estimate a tree then.
+#I'll collect the final list of trees:
+
+printf "scaffold\tstart\tend\n" > output."$run".data.tsv
+ls *.treefile | cut -d"." -f 1 | sed -e 's/:/\t/' -e 's/-/\t/' >> output."$run".data.tsv
 
