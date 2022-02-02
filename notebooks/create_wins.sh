@@ -4,16 +4,16 @@
 #SBATCH -N 1
 #SBATCH --ntasks-per-node=16
 #SBATCH --ntasks-per-core=1
-#SBATCH -p mem_0384
-#SBATCH --qos p71400_0384
+#SBATCH -p mem_xxx
+#SBATCH --qos p71400_xxx
 
-source /home/fs71400/yardeni/.bashrc 
+source /home/.bashrc 
 conda init bash
 
 #go to wd
 
 #directory
-dir=/gpfs/data/fs71400/yardeni/WGS/astral/gen_wins_noSA/
+dir=/WGS/astral/gen_wins_noSA/
 #file used to define windows. I'm working with 100kb wins today
 winfile=100kb_wins_all.sorted.txt
 #file I wanna slice
