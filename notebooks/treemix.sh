@@ -1,23 +1,21 @@
-#ftools --gzvcf Treemix.64indv.nomissing.thinned.biallelic.vcf.gz --plink --mac 2 --max-alleles 2 --chrom-map Treemix.64indv.nomissing.thinned.biallelic.chrom-map.txt --out Treemix.64indv.nomissing.thinned.biallelic
-his is not edited yet
+#create chromosome map
+bcftools view -H ../vcf/Only.Variants.AllGoodTillandsias.allChr.WGS.3bpindel.0.2missing.No_TEs_EDTA.MQ15_DP4.MAF0.045.NoCall.PASS.vcf.gz | cut -f 1 | uniq | awk '{print $0"\t"$0}' > Treemix.AllGoodTillandsia.chrom-map.txt
+#create plink file from vcf
+vcftools --gzvcf Treemix.64indv.nomissing.thinned.biallelic.vcf.gz --plink --mac 2 --max-alleles 2 --chrom-map Treemix.64indv.nomissing.thinned.biallelic.chrom-map.txt --out Treemix.64indv.nomissing.thinned.biallelic
+
 #requires clustl file: tab-delimited, 1st and 2nd column are the indv name, 3rd column is the species assignment
 
-#file produced: I removed indvs with missing data >10%, leaving me with 64 indvs. only biallelic SNPs, no missing data. Didn't do LD pruning with plink, but thinned the data every 1000snps with vcftools. This leaft 9.8k sites
+#file produced: I removed indvs with missing data >10%, leaving me with 63 indvs. car27 is sample number 64, it's in the vcf, but will be dropped later. only biallelic SNPs, allowing max 10% missing data. Didn't do LD pruning with plink, but thinned the data every 1000snps with vcftools. This leaft 84k sites
 #following https://github.com/speciationgenomics/scripts/blob/master/vcf2treemix.sh
-#create chromosome map for the next stage (vcftools and other apps don't like our chromosome names)
-bcftools view -H Treemix.64indv.nomissing.thinned.biallelic.vcf.gz | cut -f 1 | uniq | awk '{print $0"\t"$0}' > Treemix.64indv.nomissing.thinned.biallelic.chrom-map.txt
-
-#get map and ped files for plink using the chromosome map we just created
-vcftools --gzvcf Treemix.64indv.nomissing.thinned.biallelic.vcf.gz --plink --mac 2 --max-alleles 2 --chrom-map Treemix.64indv.nomissing.thinned.biallelic.chrom-map.txt --out Treemix.64indv.nomissing.thinned.biallelic
 
 #adjust the map to allow for non-human chromosome names
 
 awk -F"\t" '{
         split($2,chr,":")
-	$1="1"
-	$2="1:"chr[2]
-	        print $0
-	}' Treemix.64indv.nomissing.thinned.biallelic.map > better.map
+	        $1="1"
+	        $2="1:"chr[2]
+                print $0
+ }' Treemix.AllGoodTillandsia.thinned.biallelic.map > better.map
 
 mv better.map Treemix.64indv.nomissing.thinned.biallelic.map
 
