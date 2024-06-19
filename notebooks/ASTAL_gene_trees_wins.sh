@@ -1,11 +1,7 @@
 #!/bin/bash
-#
-#SBATCH -J makewins
-#SBATCH -N 1
-#SBATCH --ntasks-per-node=16
-#SBATCH --ntasks-per-core=1
-#SBATCH -p mem_xxx
-#SBATCH --qos p71400_xxx
+# create genomic windows from VCF file, construct maximum-likelihood tree for each window. Concatenate the output gene trees and use ASTRAL to infer a species tree.
+# requires instaled: 
+# requires binaries:
 
 source /home/.bashrc 
 conda init bash
@@ -16,20 +12,20 @@ conda init bash
 dir=/WGS/astral/gen_wins_noSA/
 #file used to define windows. I'm working with 100kb wins today
 winfile=100kb_wins_all.sorted.txt
-#file I wanna slice
+#vcf 
 vcf=../Only.Variants.onlyMexican.allChr.WGS.3bpindel.0.2missing.No_TEs_EDTA.MQ15_DP4.MAF0.045.NoCall.PASS.vcf.gz
 #name the run because I like order
 run="wins.100kb.no.SA"
 #min num of variable sites allowed. Any window with fewer SNPs will be discarded
-minsnp=40
-
-conda activate my-env
+minsnp=20
 
 cd "$dir"
 
+#clean up my previous (and failed) run
 rm *.vcf.gz
 rm *.txt
 rm *.phy
+
 ### my file was tab-delimited and I replaced the tabs so bcftools can read it
 ### sed 's/\t/:/' ../tillandsia_fasciculata_25_scaffold.windows.100k.bed | sed 's/\t/-/' | sort > 100kb_wins_all.sorted.txt
 
