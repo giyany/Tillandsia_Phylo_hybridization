@@ -9,3 +9,4 @@ This was used to generate whole-genome phylogenomics and infer hybridization in 
 * example_plot_mod_180121.R - script to create *Twisst* plots, modified slightly from [original](https://github.com/simonhmartin/twisst)
 * plot_twisst_mod.R - modified *Twisst* functions
 * iqtree.sh - generic script to produce trees with iqtree2
+* makewindows.sh - generic trees to infer ML trees on genomic windows from a VCF file.
