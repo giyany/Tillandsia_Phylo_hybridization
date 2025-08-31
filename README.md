@@ -1,6 +1,6 @@
 # Tillandsia phylogenomics and hybridization
 
-Code to reproduce results from Yardeni et al., [preprint](https://doi.org/10.1101/2023.11.16.567341 )
+Code to reproduce results from Yardeni et al., [2025](https://doi.org/10.1093/sysbio/syaf039)
 This was used to generate whole-genome phylogenomics and infer hybridization in _Tillandsia_ subgenus _Tillandsia_.
 
 * raw_to_vcf_GATK.md - processing BAM files to VCF calls and filtering.
